@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+ 
+    <!-- 
+    	bean id: Used as the reference in osgi xml e.g.
+    	property ref="beanid" or <osgi:reference id="beanid" .../>
+    		
+    	property name: Think this is the name of the variable in the system
+    	interface: This is where to find the definition of the interface
+     -->
+    
+  <bean id="overlaymanagementsystem" 
+    class="net.beaconcontroller.overlaymanagementsystem.OverlayManagementSystem"
+    init-method="startUp" destroy-method="shutDown">
+    <property name="beaconProvider" ref="beaconProvider"/>
+    <property name="deviceManager" ref="deviceManager"/>
+    <property name="routingEngine" ref="routingEngine"/>
+    <property name="overlayManager" ref="overlayManager"/>
+  </bean>
+  
+  <bean id="overlayManager" 
+    class="net.beaconcontroller.overlaymanager.OverlayManagerImpl"
+    init-method="startUp" destroy-method="shutDown">
+    <property name="beaconProvider" ref="beaconProvider"/>
+    <property name="overlayManagerAware" ref="overlayManagerAwareSet"/>
+  </bean>
+</beans>
