@@ -129,13 +129,14 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}
 	}
 	
-	 List<Integer>ids = new ArrayList<Integer>();
-	public void constructPacket(OFMessageFactory factory, OFMatch match, Route route, Device srcDevice, Device dstDevice, int bufferId) {
+	
+	public void constructPacket(OFMessageFactory factory, OFMatch match, Route route, 
+			Device srcDevice, Device dstDevice, int bufferId) {
 		OFFlowMod fm = (OFFlowMod) factory.getMessage(OFType.FLOW_MOD);
 	    OFActionOutput action = new OFActionOutput();
 	    List<OFAction> actions = new ArrayList<OFAction>();
 	    actions.add(action);
-	    fm.setIdleTimeout((short)5)
+	    fm.setIdleTimeout((short)60)
         	.setBufferId(0xffffffff)
         	.setMatch(match.clone())
         	.setActions(actions)
@@ -145,16 +146,12 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	    OFMessageSafeOutStream out = sw.getOutputStream();	        
 	    short outport = dstDevice.getSwPort();
 		((OFActionOutput)fm.getActions().get(0)).setPort(outport);
-		int j = 0;
 		
 	    //Above, building a flow for the destination device
-	    for(int i = route.getPath().size()-1; i >=0; i--){
-	    	j++;
-        	
+	    for(int i = route.getPath().size()-1; i >=0; i--){       	
 	    	//set input port
 			Link l = route.getPath().get(i);
 			fm.getMatch().setInputPort(l.getInPort());
-			logger.info("{}. inport {} outport {}",j,l.getInPort(), outport);
 			//check we are not sending to ourself
 			if(fm.getMatch().getInputPort() == ((OFActionOutput) fm
 	                   .getActions().get(0)).getPort()){
@@ -196,8 +193,6 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		fm.setMatch(match)
 			.setBufferId(OFPacketOut.BUFFER_ID_NONE);
 		fm.getMatch().setInputPort(srcDevice.getSwPort());
-			
-		logger.info("{} time around BufferId: {}",j, fm.getBufferId());
 		//check we are not sending to ourself
 		if(fm.getMatch().getInputPort() == ((OFActionOutput) fm
                    .getActions().get(0)).getPort()){
@@ -236,6 +231,8 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		Device dstDevice = deviceManager.getDeviceByNetworkLayerAddress(nwDst);
 		Device srcDevice = deviceManager.getDeviceByNetworkLayerAddress(nwSrc);
 		
+		
+		
 		//deviceManager will return null for all devices on Mininet
 		// because the devices are not as active as normal computers
 		//they only send packets when commanded therefore Beacon cannot
@@ -249,6 +246,9 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			
 			return Command.CONTINUE;
 		}
+		
+		logger.info("{} to {}",HexString.toHexString(srcDevice.getDataLayerAddress()),
+				HexString.toHexString(dstDevice.getDataLayerAddress()));
 		
 		//2. Find out what overlay these device belong to
 		Overlay dstOverlay = overlayManager.getTenantByDevice(dstDevice);
@@ -374,11 +374,11 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			lock.writeLock().lock();
 		}
 		//Testing only
-		devices.add(device);
+		/*devices.add(device);
 		count++;
 		if(count == 4){
 			buildEnvironment();
-		}
+		}*/
 		/////////////////////
 	}
 
@@ -484,9 +484,11 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		
 		//check instanceof
 		if(overlay instanceof Tenant){
-			//if removed from Tenant device must be placed back in the
-			//default instance
-			overlayManager.addDeviceToOverlay(defaultTenant, device);
+			if(!overlay.equals(defaultTenant)){
+				//if removed from Tenant device must be placed back in the
+				//default instance
+				overlayManager.addDeviceToOverlay(defaultTenant, device);
+			}
 		}else{
 			//Device removed from segment must be placed into their Tenant owner
 			overlayManager.addDeviceToOverlay(((Segment)overlay).getTenant(), device);			
@@ -503,6 +505,11 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		
 		Segment segOne = overlayManager.createSegment(tenOne, "Science Department");
 		Segment segTwo = overlayManager.createSegment(tenTwo, "IT Department");
+		
+		overlayManager.addToList(tenOne, tenTwo);
+		//overlayManager.addToList(tenTwo, tenOne);
+		overlayManager.addToList(segOne, segTwo);
+		overlayManager.addToList(segTwo, segOne);
 		//Segment segThree = overlayManager.createSegment(tenTwo, "Human Resources");
 		
 		overlayManager.addDeviceToOverlay(segOne, devices.get(0));

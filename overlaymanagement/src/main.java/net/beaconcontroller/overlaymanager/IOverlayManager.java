@@ -15,6 +15,8 @@ public interface IOverlayManager {
 	
 	public Map<Device, Tenant> getTenants();
 	
+	public Map<Device, Segment> getSegments();
+	
 	public Segment getSegmentByDevice(Device device);
 	
 	public Tenant getTenantByDevice(Device device);
