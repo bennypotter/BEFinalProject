@@ -37,7 +37,9 @@
   <osgi:set id="overlayManagerAwareSet" cardinality="0..N"
     interface="net.beaconcontroller.overlaymanager.IOverlayManagerAware">
   </osgi:set>
-  
-  
+  <!-- -->
+  <osgi:reference id="testingRunable" cardinality="1..1"
+      interface="net.beaconcontroller.overlaymanagement.testing.ITestRunable">      
+  </osgi:reference>  
  
 </beans>
