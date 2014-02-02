@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: net.beaconcontroller.overlaymanagement.web
+Bundle-SymbolicName: net.beaconcontroller.overlaymanagement.web
+Bundle-Version: 1.0.0.qualifier
+Fragment-Host: net.beaconcontroller.web;bundle-version="1.0.2"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Import-Package: net.beaconcontroller.core.internal,
+ net.beaconcontroller.devicemanager,
+ net.beaconcontroller.overlaymanager,
+ org.springframework.stereotype;version="3.0.4.RELEASE",
+ org.springframework.web.multipart;version="3.0.4.RELEASE",
+ org.springframework.web.servlet.mvc;version="3.0.4.RELEASE"
