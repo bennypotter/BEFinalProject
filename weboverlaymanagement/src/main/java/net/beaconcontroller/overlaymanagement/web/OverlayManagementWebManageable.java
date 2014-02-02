@@ -61,12 +61,12 @@ public class OverlayManagementWebManageable implements IWebManageable {
         model.put("layout", layout);
 
         // Bundle Form
-        model.put("title", "Add Bundle");
+        model.put("title", "Create Tenant");
         layout.addSection(new JspSection("test.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
         return BeaconViewResolver.SIMPLE_VIEW;
     }
     
-    @RequestMapping(value = "/bundle/add", method = RequestMethod.POST)
+    @RequestMapping(value = "/tenant/add", method = RequestMethod.POST)
     public View osgiBundleAdd(@RequestParam("file") String file, Map<String, Object> model) throws Exception {
         BeaconJsonView view = new BeaconJsonView();
         tenants.add(overlayManager.createTenant(file));
@@ -108,10 +108,15 @@ public class OverlayManagementWebManageable implements IWebManageable {
         tableOptions.put("\"bFilter\"", "true");
         TableSection tableSection = new TableSection("Overlays", columnNames, cells, "overlay-domains", tableOptions);
         layout.addSection(tableSection, TwoColumnLayout.COLUMN1);
-     // Switch List Table
+        
+        // Switch List Table
         model.put("title", "Device Overlays");
         model.put("switches", deviceManager.getDevices());
+        model.put("overlayManager", overlayManager);
         layout.addSection(new JspSection("devicetooverlay.jsp", model), TwoColumnLayout.COLUMN2);
+        
+       
+        
         return BeaconViewResolver.SIMPLE_VIEW;
     }
     

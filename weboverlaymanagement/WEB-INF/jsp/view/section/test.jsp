@@ -7,15 +7,15 @@
 <div class="section">
   <div class="section-header">${title}</div>
   <div class="section-content">
-    <form method="post" action="/wm/overlaymanager/bundle/add" class="beaconAjaxDialogForm">
+    <form method="post" action="/wm/overlaymanager/tenant/add" class="beaconAjaxDialogForm">
       <table>
         <tr>
-          <td>Select a bundle to upload (must be a .jar file): </td>
+          <td>Tenant Name: </td>
           <td><input type="input" name="file"/></td>
         </tr>
         <tr>
           <td colspan="2">
-            <input type="submit" value="Upload"/>
+            <input type="submit" value="Create"/>
           </td>
         </tr>
       </table>

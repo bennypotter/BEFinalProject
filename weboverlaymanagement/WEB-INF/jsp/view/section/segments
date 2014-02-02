@@ -1,0 +1,43 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="net.beaconcontroller.overlaymanager.IOverlayManager, net.beaconcontroller.overlaymanager.Overlay,
+	net.beaconcontroller.overlaymanager.Segment, java.util.List, java.net.*"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<div class="section">
+  <div class="section-header">${title}</div>
+  <div class="section-content">
+    <table id="segmentlist" class="tableSection">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>Allow List</th>
+        </tr>
+      </thead>
+      <tbody>
+        <c:forEach items="${segments}" var="s" varStatus="status">
+          <%  Segment s = (Segment)pageContext.findAttribute("s"); 
+              pageContext.setAttribute("segName", s.getName());
+              List<Overlay> allowList = s.getAllowList();
+          %>
+          <tr>
+            <td><c:out value="${segName}"/></td>
+            <td><c:foreach items="${allowList}" var="al" varStatus="status">
+            <%
+            	Overlay o = (Overlay)pageContext.findAttribute("al");
+            	pageContext.setAttribute("allowed", al.getName());
+            %>
+            <c:out value="${allowed}"/>
+            </foreach>
+            </td>
+          </tr>
+        </c:forEach>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="text/javascript" charset="utf-8">
+    (function() {
+        new DataTableWrapper('segmentlist', null, {}, false, false); 
+    })();
+</script>
