@@ -14,6 +14,11 @@ protected Tenant tenant;
 		this.tenant = tenant;
 	}
 	
+	public Segment(long id, String name, Tenant tenant) {
+		super(id, name);
+		this.tenant = tenant;
+	}
+	
 	public Segment(String name, ArrayList<Device> devices, 
 			ArrayList<Overlay> allowList, Tenant tenant) {
 		super(name,devices,allowList);

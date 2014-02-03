@@ -18,6 +18,13 @@ public class Overlay {
 		id = 0;		
 	}
 	
+	public Overlay(long id, String name) {
+		this.name = name;
+		devices = new ArrayList<Device>();
+		allowList = new ArrayList<Overlay>();
+		this.id = id;		
+	}
+	
 	public Overlay(String name, ArrayList<Device> devices, ArrayList<Overlay> allowList) {
 		this.name = name;
 		this.devices = devices;
@@ -30,6 +37,10 @@ public class Overlay {
 		this.devices = devices;
 		this.allowList = allowList;
 		this.id = id;
+	}
+	
+	public long getId(){
+		return id;
 	}
 	
 	public ArrayList<Device> getDevices(){

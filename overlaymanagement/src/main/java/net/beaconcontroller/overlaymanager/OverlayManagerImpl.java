@@ -3,6 +3,7 @@ package net.beaconcontroller.overlaymanager;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -43,15 +44,19 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	protected Set<IOverlayManagerAware> overlayManagerAware;
 	protected Map<Device, Tenant> tenantMap;
 	protected Map<Device, Segment> segMap;
+	protected Map<Long, Overlay> idToOverlayMap;
 	protected BlockingQueue<Update> updates;
 	protected Thread updatesThread;
 	protected volatile boolean shuttingDown = false;
 	protected ReentrantReadWriteLock lock;
+	protected Random idGen;//Generates random Ids for overlays
 	
 	public void startUp() {
+		idGen = new Random();
         beaconProvider.addOFMessageListener(OFType.PACKET_IN, this);
         tenantMap = new HashMap<Device, Tenant>();
 		segMap = new HashMap<Device,Segment>();
+		idToOverlayMap = new HashMap<Long, Overlay>();
 		lock = new ReentrantReadWriteLock();
 		this.updates = new LinkedBlockingQueue<Update>();
 		//Tenant t = new Tenant("Test Tenant");
@@ -196,14 +201,23 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	/********************* IOverlayManager **************************/
 	@Override
 	public Tenant getTenantById(long id) {
-		// TODO Auto-generated method stub
-		return null;
+		lock.readLock().lock();
+		try{
+			return (Tenant)idToOverlayMap.get(id);
+		} finally {
+			lock.readLock().unlock();
+		}
+		
 	}
 
 	@Override
-	public Segment getSegmentById(long id) {
-		// TODO Auto-generated method stub
-		return null;
+	public Segment getSegmentById(long tenantId, long segmentId) {
+		lock.readLock().lock();
+		try{
+			return (Segment)((Tenant)idToOverlayMap.get(tenantId)).getSegments().get(segmentId);
+		} finally {
+			lock.readLock().unlock();
+		}		
 	}
 
 	@Override
@@ -289,7 +303,10 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	public Tenant createTenant(String name){
 		lock.writeLock().lock();
 		try{
-			Tenant t = new Tenant(name);
+			//Need to be fixed...not truly a long
+			Long id = (long) idGen.nextInt(Integer.MAX_VALUE)+1;
+			Tenant t = new Tenant(id, name);
+			idToOverlayMap.put(id, t);
 			updateTensStatus(t, true);
 			return t;
 		} finally {
@@ -301,8 +318,9 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	public Segment createSegment(Tenant tenant, String name){
 		lock.writeLock().lock();
 		try{
-			Segment s = new Segment(name, tenant);
-			tenant.getSegments().add(s);
+			Long id = (long) idGen.nextInt(Integer.MAX_VALUE)+1;
+			Segment s = new Segment(id, name, tenant);
+			tenant.getSegments().put(id, s);
 			updateSegsStatus(s, true);
 			return s;
 		} finally {

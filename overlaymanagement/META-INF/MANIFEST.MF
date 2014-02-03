@@ -15,4 +15,3 @@ Import-Package: net.beaconcontroller.core,
  org.openflow.util;version="1.0.2",
  org.slf4j
 Export-Package: net.beaconcontroller.overlaymanager
-Require-Bundle: net.beaconcontroller.overlaymanagement.test

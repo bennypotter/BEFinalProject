@@ -18,7 +18,6 @@
     <property name="deviceManager" ref="deviceManager"/>
     <property name="routingEngine" ref="routingEngine"/>
     <property name="overlayManager" ref="overlayManager"/>
-    <property name="testingRunable" ref="testingRunable"/>
   </bean>
   
   <bean id="overlayManager" 

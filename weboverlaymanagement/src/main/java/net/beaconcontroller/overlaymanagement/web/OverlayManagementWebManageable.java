@@ -60,21 +60,76 @@ public class OverlayManagementWebManageable implements IWebManageable {
         Layout layout = new OneColumnLayout();
         model.put("layout", layout);
 
-        // Bundle Form
+        // Tenant create Form
         model.put("title", "Create Tenant");
         layout.addSection(new JspSection("test.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
+        
+        
+        //Segment Create Form
+        model.put("title", "Create Segment");
+        layout.addSection(new JspSection("createSeg.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
+        //Segment Create Form
+        model.put("title", "Add Device to Tenant");
+        layout.addSection(new JspSection("addDeviceToTen.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
+        
+        //Device Add to Ten Form
+        model.put("title", "Add Device to Segment");
+        layout.addSection(new JspSection("addDeviceToSeg.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
+        
+        
         return BeaconViewResolver.SIMPLE_VIEW;
     }
     
     @RequestMapping(value = "/tenant/add", method = RequestMethod.POST)
-    public View osgiBundleAdd(@RequestParam("file") String file, Map<String, Object> model) throws Exception {
+    public View createTenant(@RequestParam("file") String file, Map<String, Object> model) throws Exception {
         BeaconJsonView view = new BeaconJsonView();
         tenants.add(overlayManager.createTenant(file));
         
         view.setContentType("text/javascript");
         return view;
     }
-
+    
+    @RequestMapping(value = "/segment/add", method = RequestMethod.POST)
+    public View createSegment(@RequestParam("segName") String segName,@RequestParam("tenOwner") String owner,
+    		Map<String, Object> model) throws Exception {
+        BeaconJsonView view = new BeaconJsonView();
+        for(Tenant t : tenants){
+        	if(t.getName().equals(owner)){
+        		overlayManager.createSegment(t, segName);
+        		view.setContentType("text/javascript");
+        		return view;
+        	}
+        }
+        //logger.info here
+        view.setContentType("text/javascript");
+        return view;
+    }
+    
+    @RequestMapping(value = "/device/addtenant", method = RequestMethod.POST)
+    public View deviceAddTenant(@RequestParam("mac") String dlAddr,@RequestParam("tenId") String tenId,
+    		Map<String, Object> model) throws Exception {
+        BeaconJsonView view = new BeaconJsonView();
+        Device d = deviceManager.getDeviceByDataLayerAddress(HexString.fromHexString(dlAddr));
+        long id = Long.parseLong(tenId);
+        Tenant t = overlayManager.getTenantById(id);
+        overlayManager.addDeviceToOverlay(t, d);
+        view.setContentType("text/javascript");
+        return view;
+    }
+    
+    
+    @RequestMapping(value = "/device/addsegment", method = RequestMethod.POST)
+    public View deviceAddSegment(@RequestParam("mac") String dlAddr,@RequestParam("tenId") String tenID,
+    		@RequestParam("segId") String segID, Map<String, Object> model) throws Exception {
+        BeaconJsonView view = new BeaconJsonView();
+        Device d = deviceManager.getDeviceByDataLayerAddress(HexString.fromHexString(dlAddr));
+        long segId = Long.parseLong(segID);
+        long tenId = Long.parseLong(tenID);
+        Segment s = overlayManager.getSegmentById(tenId, segId);
+        overlayManager.addDeviceToOverlay(s, d);
+        view.setContentType("text/javascript");
+        return view;
+    }
     
     @RequestMapping("/overview")
     public String overview(Locale locale, Map<String, Object> model) {
@@ -93,10 +148,10 @@ public class OverlayManagementWebManageable implements IWebManageable {
            	List<String> row = new ArrayList<String>();
            	row.add(t.getName());
            	StringBuffer sb = new StringBuffer();
-           	for(Segment s : t.getSegments()){
+           	for(Map.Entry entry : t.getSegments().entrySet()){
            		if (sb.length() > 0)
                        sb.append(" ");
-           		sb.append(s.getName() + " ");
+           		sb.append(((Segment)entry.getValue()).getName() + " ");
            		
            	}
            	row.add(sb.toString());

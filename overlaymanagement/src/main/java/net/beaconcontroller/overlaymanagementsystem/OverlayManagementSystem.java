@@ -34,7 +34,6 @@ import net.beaconcontroller.core.io.OFMessageSafeOutStream;
 import net.beaconcontroller.devicemanager.Device;
 import net.beaconcontroller.devicemanager.IDeviceManager;
 import net.beaconcontroller.devicemanager.IDeviceManagerAware;
-import net.beaconcontroller.overlaymanagement.testing.ITestRunable;
 import net.beaconcontroller.overlaymanager.IOverlayManager;
 import net.beaconcontroller.overlaymanager.IOverlayManagerAware;
 import net.beaconcontroller.overlaymanager.Overlay;
@@ -54,7 +53,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	protected IOverlayManager overlayManager;
 	protected Tenant defaultTenant;
 	protected ReentrantReadWriteLock lock;
-	protected ITestRunable testingRunable;
+	
 	
 	/////////Testing only////////////
 	List<Device> devices;
@@ -102,14 +101,6 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	
 	public void setOverlayManager(IOverlayManager overlayManager) {
 		this.overlayManager = overlayManager;
-	}
-	/**/
-	public ITestRunable getTestingRunable() {
-		return testingRunable;
-	}	
-	
-	public void setTestingRunable(ITestRunable testingRunable) {
-		this.testingRunable = testingRunable;
 	}
 	
 	public void deleteRoutes(List<Device> devices) {		
@@ -224,7 +215,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	/******************** IOFMessageListener ******************************/ 
 	@Override
 	public Command receive(IOFSwitch sw, OFMessage msg) throws IOException {
-		testingRunable.runTest(0, null);
+		
 		
 		//1. Find out who the packet was from and to
 		OFPacketIn pi = (OFPacketIn)msg;
@@ -421,7 +412,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	/************************* IOverlayManagerAware *****************************/ 
 	@Override
 	public void tenantCreated(Tenant tenant) {
-		logger.debug("Tenant: {} has been created", tenant.getName());			
+		logger.debug("Tenant: {} ID: {} has been created", tenant.getName(), tenant.getId());			
 	}
 
 	@Override
@@ -438,18 +429,18 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}
 		
 		//Get all devices residing in segments and remove them
-		for(Segment s : tenant.getSegments()){
-			segmentRemoved(s);
+		for(Map.Entry entry: tenant.getSegments().entrySet()){
+			segmentRemoved((Segment)entry.getValue());
 		}
 		//delete routes on the switches
 		deleteRoutes(devices);
-		logger.info("Tenant: {} has been removed", tenant.getName());		
+		logger.info("Tenant: {} ID: {} has been removed", tenant.getName(), tenant.getId());		
 	}
 
 	@Override
 	public void segmentCreated(Segment segment) {
-		logger.info("Segment: {} has been created in Tenant: {}",
-				segment.getName(), segment.getTenant().getName());			
+		logger.info("Segment: {} ID: {} has been created in Tenant: {} ID: {}",
+				segment.getName(), segment.getId(), segment.getTenant().getName(), segment.getTenant().getId());			
 	}
 
 	@Override
