@@ -148,7 +148,7 @@ public class OverlayManagementWebManageable implements IWebManageable {
            	List<String> row = new ArrayList<String>();
            	row.add(t.getName());
            	StringBuffer sb = new StringBuffer();
-           	for(Map.Entry entry : t.getSegments().entrySet()){
+           	for(@SuppressWarnings("rawtypes") Map.Entry entry : t.getSegments().entrySet()){
            		if (sb.length() > 0)
                        sb.append(" ");
            		sb.append(((Segment)entry.getValue()).getName() + " ");

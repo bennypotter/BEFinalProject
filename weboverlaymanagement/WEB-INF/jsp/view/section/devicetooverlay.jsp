@@ -1,5 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
-<%@ page import="net.beaconcontroller.overlaymanager.IOverlayManager, net.beaconcontroller.overlaymanager.Tenant, net.beaconcontroller.devicemanager.Device, net.beaconcontroller.devicemanager.Device, net.beaconcontroller.packet.*, org.openflow.util.HexString, java.net.*"%>
+<%@ page import="net.beaconcontroller.overlaymanager.IOverlayManager, net.beaconcontroller.overlaymanager.Tenant,
+		net.beaconcontroller.overlaymanager.Segment, net.beaconcontroller.devicemanager.Device, 
+		net.beaconcontroller.packet.*, org.openflow.util.HexString, java.net.*"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <div class="section">
@@ -18,7 +20,12 @@
               pageContext.setAttribute("hexId", HexString.toHexString(sw.getDataLayerAddress()));
               IOverlayManager om = (IOverlayManager)pageContext.findAttribute("overlayManager");
               Tenant t = om.getTenantByDevice(sw);
-              pageContext.setAttribute("devOwner", t.getName());
+              if(t != null){
+              	pageContext.setAttribute("devOwner", t.getName());
+              } else {
+              	Segment s = om.getSegmentByDevice(sw);
+              	pageContext.setAttribute("devOwner", s.getName());
+              }
           %>
           <tr>
             <td><c:out value="${hexId}"/></td>
