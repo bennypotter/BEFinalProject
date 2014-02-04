@@ -131,12 +131,12 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	
 	
 	public void constructPacket(OFMessageFactory factory, OFMatch match, Route route, 
-			Device srcDevice, Device dstDevice, int bufferId) {
+			Device srcDevice, Device dstDevice, OFPacketIn pi/*int bufferId*/) {
 		OFFlowMod fm = (OFFlowMod) factory.getMessage(OFType.FLOW_MOD);
 	    OFActionOutput action = new OFActionOutput();
 	    List<OFAction> actions = new ArrayList<OFAction>();
 	    actions.add(action);
-	    fm.setIdleTimeout((short)60)
+	    fm.setIdleTimeout((short)5)
         	.setBufferId(0xffffffff)
         	.setMatch(match.clone())
         	.setActions(actions)
@@ -146,12 +146,15 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	    OFMessageSafeOutStream out = sw.getOutputStream();	        
 	    short outport = dstDevice.getSwPort();
 		((OFActionOutput)fm.getActions().get(0)).setPort(outport);
-		
+		String linkage = "";
 	    //Above, building a flow for the destination device
 	    for(int i = route.getPath().size()-1; i >=0; i--){       	
 	    	//set input port
+	    	String part = "";
 			Link l = route.getPath().get(i);
 			fm.getMatch().setInputPort(l.getInPort());
+			part = "{"+outport+"}["+l.getDst()+"]"+"{"+l.getInPort()+"}---";
+			linkage = linkage + part;
 			//check we are not sending to ourself
 			if(fm.getMatch().getInputPort() == ((OFActionOutput) fm
 	                   .getActions().get(0)).getPort()){
@@ -164,6 +167,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			//send the flow
 			try{
 				out.write(fm);
+				logger.info("flow sent to switch {}",sw.getId());
 			}catch (IOException e){
 				logger.info("Error sending flow", e);
 			}
@@ -193,6 +197,8 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		fm.setMatch(match)
 			.setBufferId(OFPacketOut.BUFFER_ID_NONE);
 		fm.getMatch().setInputPort(srcDevice.getSwPort());
+		String part = "{"+outport+"}["+srcDevice.getSw().getId()+"]{"+srcDevice.getSwPort()+"}---";
+		linkage = linkage + part;
 		//check we are not sending to ourself
 		if(fm.getMatch().getInputPort() == ((OFActionOutput) fm
                    .getActions().get(0)).getPort()){
@@ -204,12 +210,31 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			return;
 		}
 		
+		//Create packet out (stops "specified buffer does not exist" error)
+		//Think this is because the switch does not buffer for long and this 
+		//algorithm take longer than time it is buffered for???
+		/*OFActionOutput outAction;
+		if(route.getPath().size() > 0){
+			outAction = new OFActionOutput(outport);
+		}else{
+			outAction = new OFActionOutput(dstDevice.getSwPort());
+		}
+
+        OFPacketOut po = new OFPacketOut()
+            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
+            .setInPort(fm.getMatch().getInputPort())
+            .setActions(Collections.singletonList((OFAction)outAction))
+        	.setPacketData(pi.getPacketData());
+		*/
 		//send the flow
 		try{
 			out.write(fm);
+			
+			//out.write(po);
 		}catch (IOException e){
 			logger.info("Error sending flow", e);
-		}		
+		}
+		logger.info(linkage);
 	}	
 	
 	/******************** IOFMessageListener ******************************/ 
@@ -323,13 +348,14 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 				//the packet to the next switch so we do not have to repeat this process at the next switch.
 				//This mean we must take each "Link" in a Route, find the dst Switch, and tell it which port
 				//to send the packet out of...
+				logger.info("packet from switch {}",sw.getId());
 				OFMessageInStream in = sw.getInputStream();
-				constructPacket(in.getMessageFactory(), match, r, srcDevice, dstDevice, pi.getBufferId() /*pi*/);	
+				constructPacket(in.getMessageFactory(), match, r, srcDevice, dstDevice, /*pi.getBufferId()*/ pi);	
 				
 				//Create packet out (stops "specified buffer does not exist" error)
 				//Think this is because the switch does not buffer for long and this 
 				//algorithm take longer than time it is buffered for???
-				OFActionOutput outAction;
+				/*OFActionOutput outAction;
 				if(r.getPath().size() > 0){
 					outAction = new OFActionOutput(r.getPath().get(0).getOutPort());
 				}else{
@@ -346,7 +372,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 					sw.getOutputStream().write(po);
 				}catch (IOException e){
 					logger.info("Error sending flow", e);
-				}
+				}*/
 			}
 		}
 		return Command.CONTINUE;

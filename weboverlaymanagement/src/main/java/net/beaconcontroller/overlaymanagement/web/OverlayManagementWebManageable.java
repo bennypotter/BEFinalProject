@@ -76,6 +76,9 @@ public class OverlayManagementWebManageable implements IWebManageable {
         model.put("title", "Add Device to Segment");
         layout.addSection(new JspSection("addDeviceToSeg.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
         
+      //Device Allow List Form
+        model.put("title", "Add to Allow List");
+        layout.addSection(new JspSection("allowlist.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
         
         return BeaconViewResolver.SIMPLE_VIEW;
     }
@@ -117,7 +120,6 @@ public class OverlayManagementWebManageable implements IWebManageable {
         return view;
     }
     
-    
     @RequestMapping(value = "/device/addsegment", method = RequestMethod.POST)
     public View deviceAddSegment(@RequestParam("mac") String dlAddr,@RequestParam("tenId") String tenID,
     		@RequestParam("segId") String segID, Map<String, Object> model) throws Exception {
@@ -129,6 +131,30 @@ public class OverlayManagementWebManageable implements IWebManageable {
         overlayManager.addDeviceToOverlay(s, d);
         view.setContentType("text/javascript");
         return view;
+    }
+    
+    @RequestMapping(value = "/allowlist", method = RequestMethod.POST)
+    public View addToAllowList(@RequestParam("srcTen") String srcTen, @RequestParam("dstTen") String dstTen,
+    		@RequestParam("overlayCheck") String selection, @RequestParam("srcSeg") String srcSeg, 
+    		@RequestParam("dstSeg") String dstSeg,	Map<String, Object>model) throws Exception {
+    	BeaconJsonView view = new BeaconJsonView();
+    	Long srcId = Long.parseLong(srcTen);
+    	Long dstId = Long.parseLong(dstTen);
+    	Tenant srcTenant = overlayManager.getTenantById(srcId);
+    	Tenant dstTenant = overlayManager.getTenantById(dstId);
+    	switch(selection){
+    	case "Tenant":    		
+        	overlayManager.addToList(srcTenant, dstTenant);
+    		break;
+    		
+    	case "Segment":
+    		Segment srcSegment = srcTenant.getSegments().get(Long.parseLong(srcSeg));
+    		Segment dstSegment = dstTenant.getSegments().get(Long.parseLong(dstSeg));
+    		overlayManager.addToList(srcSegment, dstSegment);
+    		break;
+    	}
+    	
+    	return view;
     }
     
     @RequestMapping("/overview")

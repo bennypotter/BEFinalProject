@@ -20,7 +20,7 @@
               pageContext.setAttribute("hexId", HexString.toHexString(sw.getDataLayerAddress()));
               IOverlayManager om = (IOverlayManager)pageContext.findAttribute("overlayManager");
               Tenant t = om.getTenantByDevice(sw);
-              if(t != null){
+              if(t != null) {
               	pageContext.setAttribute("devOwner", t.getName());
               } else {
               	Segment s = om.getSegmentByDevice(sw);
