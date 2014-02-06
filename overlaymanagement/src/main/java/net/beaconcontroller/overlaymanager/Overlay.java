@@ -86,7 +86,7 @@ public class Overlay {
 	
 	public boolean canCommunicate(Overlay o){
 		for(Overlay overlay:allowList){
-			if(overlay.equals(o)){
+			if(overlay.id == o.id){
 				return true;
 			}
 		}

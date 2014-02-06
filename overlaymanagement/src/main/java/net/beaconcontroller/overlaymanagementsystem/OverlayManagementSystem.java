@@ -61,7 +61,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	////////////////////////////////
 	
 	public void startUp() {
-		//defaultTenant = overlayManager.createTenant("Default Tenant");
+		defaultTenant = overlayManager.createTenant("Default Tenant");
 		beaconProvider.addOFMessageListener(OFType.PACKET_IN, this);
 		devices = new ArrayList<Device>();
 		lock = new ReentrantReadWriteLock();
@@ -136,7 +136,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	    OFActionOutput action = new OFActionOutput();
 	    List<OFAction> actions = new ArrayList<OFAction>();
 	    actions.add(action);
-	    fm.setIdleTimeout((short)5)
+	    fm.setIdleTimeout((short)255)
         	.setBufferId(0xffffffff)
         	.setMatch(match.clone())
         	.setActions(actions)
@@ -195,7 +195,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}
 		//Now we can set the original flow
 		fm.setMatch(match)
-			.setBufferId(OFPacketOut.BUFFER_ID_NONE);
+			.setBufferId(pi.getBufferId());
 		fm.getMatch().setInputPort(srcDevice.getSwPort());
 		String part = "{"+outport+"}["+srcDevice.getSw().getId()+"]{"+srcDevice.getSwPort()+"}---";
 		linkage = linkage + part;
@@ -264,25 +264,25 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//learn the address as quickly as it normally would..."pingall"
 		//sorts this
 		if(dstDevice == null){
-			logger.info("Destination device is not know");
+			//logger.info("Destination device is not know");
 			return Command.CONTINUE;
 		}else if(srcDevice == null){
-			logger.info("Source device is not know");
+			//logger.info("Source device is not know");
 			
 			return Command.CONTINUE;
 		}
 		
-		logger.info("{} to {}",HexString.toHexString(srcDevice.getDataLayerAddress()),
-				HexString.toHexString(dstDevice.getDataLayerAddress()));
+		//logger.info("{} to {}",HexString.toHexString(srcDevice.getDataLayerAddress()),
+				//HexString.toHexString(dstDevice.getDataLayerAddress()));
 		
 		//2. Find out what overlay these device belong to
 		Overlay dstOverlay = overlayManager.getTenantByDevice(dstDevice);
 		Overlay srcOverlay = overlayManager.getTenantByDevice(srcDevice);
 		
 		if(dstOverlay == null){
-			logger.info("Destination Tenant is null");
+			//logger.info("Destination Tenant is null");
 		}else if (srcOverlay == null){
-			logger.info("Source Tenant is null");
+			//logger.info("Source Tenant is null");
 		}
 		
 		if((dstOverlay == null) && (srcOverlay == null)){
@@ -292,7 +292,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}else if((dstOverlay == null) || (srcOverlay == null)){
 			//This means one if the devices is not in a Tenant but possibly 
 			//a segment and communication is not allowed
-			logger.info("One of the devices does not belong to a Tenant, dropping packet");
+			//logger.info("One of the devices does not belong to a Tenant, dropping packet");
 			return Command.CONTINUE;
 		}
 		 
@@ -301,46 +301,46 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//Are both devices in the same Tenant
 		boolean canTalk = false;
 		if(dstOverlay.equals(srcOverlay)){
-			logger.info("Overlays are the same.....");
+			//logger.info("Overlays are the same.....");
 			canTalk = true;			
 		}else{
 			if((srcOverlay instanceof Tenant) && (dstOverlay instanceof Tenant)){
-				logger.info("Tenants are Not the same, checking allow list...");
+				//logger.info("Tenants are Not the same, checking allow list...");
 				//	Check if they have allowed communication
 				boolean srcTntCanTalk = srcOverlay.canCommunicate(dstOverlay);
 				boolean dstTntCanTalk = dstOverlay.canCommunicate(srcOverlay);
 				if((srcTntCanTalk) && (dstTntCanTalk)){
-					logger.info("Both Tenant have agreed communication...");
+					//logger.info("Both Tenant have agreed communication...");
 					canTalk = true;
 				}					
 			}else{
 				//They are segments
-				logger.info("Segments are Not the same, checking allow list...");
+				//logger.info("Segments are Not the same, checking allow list...");
 				boolean srcSegCanTalk = srcOverlay.canCommunicate(dstOverlay);
 				boolean dstSegCanTalk = dstOverlay.canCommunicate(srcOverlay);
 				if((srcSegCanTalk) && (dstSegCanTalk)){
-					logger.info("Segments have agreed communication, checking tenants...");
+					//logger.info("Segments have agreed communication, checking tenants...");
 					Tenant srcTenant = ((Segment)srcOverlay).getTenant();
-					Tenant dstTenant =  ((Segment)srcOverlay).getTenant();
+					Tenant dstTenant =  ((Segment)dstOverlay).getTenant();
 					boolean srcTnCanTalk = srcTenant.canCommunicate(dstTenant);
 					boolean dstTnCanTalk = dstTenant.canCommunicate(srcTenant);
 					if((srcTnCanTalk) && (dstTnCanTalk)){
-						logger.info("Tenants have agreed communication...");
+						//logger.info("Tenants have agreed communication...");
 						canTalk = true;
 					}else{
-						logger.info("Tenants have not agreed communication");
+						//logger.info("Tenants have not agreed communication");
 					}
 				}else{
-					logger.info("Segments have not agreed Communication");
+					//logger.info("Segments have not agreed communication");
 				}
 			}			
 		}
 		
 		if(canTalk){
-			logger.info("Devices are allowed to communicate");
+			//logger.info("Devices are allowed to communicate");
 			Route r = routingEngine.getRoute(srcDevice.getSw().getId(), dstDevice.getSw().getId());
 			if(r == null){
-				logger.info("Route not found");
+				//logger.info("Route not found");
 				return Command.CONTINUE;
 			}else{
 				//logger.info("Route has been found inputPort: {}",match.getInputPort());
@@ -348,7 +348,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 				//the packet to the next switch so we do not have to repeat this process at the next switch.
 				//This mean we must take each "Link" in a Route, find the dst Switch, and tell it which port
 				//to send the packet out of...
-				logger.info("packet from switch {}",sw.getId());
+				//logger.info("packet from switch {}",sw.getId());
 				OFMessageInStream in = sw.getInputStream();
 				constructPacket(in.getMessageFactory(), match, r, srcDevice, dstDevice, /*pi.getBufferId()*/ pi);	
 				
@@ -390,9 +390,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	public void deviceAdded(Device device) {		
 		//Devices that have been added to the network must be placed
 		//into the	 default zone
-		if(first)
-			defaultTenant = overlayManager.createTenant("Default Tenant");
-		first = false;
+		
 		lock.writeLock().lock();
 		try{
 		overlayManager.addDeviceToOverlay(defaultTenant, device);
@@ -521,31 +519,5 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}			
 		logger.info("Device: {} has been removed from: {}", 
 					HexString.toHexString(device.getDataLayerAddress()), overlay.getName());		
-	}
-	
-	///////////Testing only/////////////////////
-	public void buildEnvironment(){
-		
-		Tenant tenOne = overlayManager.createTenant("Customer One");
-		Tenant tenTwo = overlayManager.createTenant("Customer Two");
-		
-		Segment segOne = overlayManager.createSegment(tenOne, "Science Department");
-		Segment segTwo = overlayManager.createSegment(tenTwo, "IT Department");
-		
-		overlayManager.addToList(tenOne, tenTwo);
-		//overlayManager.addToList(tenTwo, tenOne);
-		overlayManager.addToList(segOne, segTwo);
-		overlayManager.addToList(segTwo, segOne);
-		//Segment segThree = overlayManager.createSegment(tenTwo, "Human Resources");
-		
-		overlayManager.addDeviceToOverlay(segOne, devices.get(0));
-		overlayManager.addDeviceToOverlay(segTwo, devices.get(1));		
-		overlayManager.addDeviceToOverlay(segTwo, devices.get(2));
-		overlayManager.addDeviceToOverlay(segOne, devices.get(3));
-		/*overlayManager.addDeviceToOverlay(segTwo, devices.get(4));
-		overlayManager.addDeviceToOverlay(segThree, devices.get(5));
-		overlayManager.addDeviceToOverlay(segOne, devices.get(6));
-		overlayManager.addDeviceToOverlay(segTwo, devices.get(7));
-		overlayManager.addDeviceToOverlay(segThree, devices.get(8));*/	
 	}
 }
