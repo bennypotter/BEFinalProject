@@ -340,7 +340,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			//logger.info("Devices are allowed to communicate");
 			Route r = routingEngine.getRoute(srcDevice.getSw().getId(), dstDevice.getSw().getId());
 			if(r == null){
-				//logger.info("Route not found");
+				logger.info("Route not found");
 				return Command.CONTINUE;
 			}else{
 				//logger.info("Route has been found inputPort: {}",match.getInputPort());
