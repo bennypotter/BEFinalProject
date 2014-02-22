@@ -7,15 +7,11 @@
 <div class="section">
   <div class="section-header">${title}</div>
   <div class="section-content">
-    <form method="post" action="/wm/overlaymanager/device/addtenant" class="beaconAjaxDialogForm">
+    <form method="post" action="/wm/overlaymanager/tenant/add" class="beaconAjaxDialogForm">
       <table>
         <tr>
-          <td>Device MAC: </td>
-          <td><input type="input" name="mac"/></td>
-        </tr>
-        <tr>
-        <td>Tenant ID:</td>
-        <td><input type="input" name="tenId"/></td>
+          <td>Tenant Name: </td>
+          <td><input type="input" name="file"/></td>
         </tr>
         <tr>
           <td colspan="2">

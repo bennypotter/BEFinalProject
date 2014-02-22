@@ -241,7 +241,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	@Override
 	public Command receive(IOFSwitch sw, OFMessage msg) throws IOException {
 		
-		
+		logger.info("Switch {} wants help", sw.getId());
 		//1. Find out who the packet was from and to
 		OFPacketIn pi = (OFPacketIn)msg;
 		OFMatch match = OFMatch.load(pi.getPacketData(), pi.getInPort());
@@ -349,9 +349,31 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 				//This mean we must take each "Link" in a Route, find the dst Switch, and tell it which port
 				//to send the packet out of...
 				//logger.info("packet from switch {}",sw.getId());
+				
+				//check querying switch is not in route
+				for(Link l : r.getPath()){
+					if(sw.getId() == l.getDst()){
+						short out = helpAlong(sw, r.getPath());
+						OFFlowMod fm = (OFFlowMod) sw.getInputStream().getMessageFactory().getMessage(OFType.FLOW_MOD);
+					    OFActionOutput action = new OFActionOutput();
+					    List<OFAction> actions = new ArrayList<OFAction>();
+					    actions.add(action);
+					    fm.setIdleTimeout((short)255)
+				        	.setBufferId(pi.getBufferId())
+				        	.setMatch(match.clone())
+				        	.setActions(actions)
+				        	.setLengthU(OFFlowMod.MINIMUM_LENGTH+OFActionOutput.MINIMUM_LENGTH);
+					    ((OFActionOutput)fm.getActions().get(0)).setPort(out);
+					    sw.getOutputStream().write(fm);
+						return Command.CONTINUE;
+					}
+				}
 				OFMessageInStream in = sw.getInputStream();
 				constructPacket(in.getMessageFactory(), match, r, srcDevice, dstDevice, /*pi.getBufferId()*/ pi);	
-				
+				// send the packet if it is not buffered
+                if (pi.getBufferId() == 0xffffffff) {
+                    pushPacket(in.getMessageFactory(), sw, match, pi);
+                }
 				//Create packet out (stops "specified buffer does not exist" error)
 				//Think this is because the switch does not buffer for long and this 
 				//algorithm take longer than time it is buffered for???
@@ -378,6 +400,36 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		return Command.CONTINUE;
 		
     }	
+	public short helpAlong(IOFSwitch sw, List<Link> path){
+		for(int i = 0; i < path.size(); i++){
+			if(sw.getId() == path.get(i).getDst()){
+				return path.get(i+1).getOutPort();
+			}
+		}
+		return -1;
+	}
+	public void pushPacket(OFMessageFactory factory, IOFSwitch sw, OFMatch match, OFPacketIn pi) {
+        OFPacketOut po = (OFPacketOut) factory.getMessage(OFType.PACKET_OUT);
+        po.setBufferId(pi.getBufferId());
+        po.setInPort(pi.getInPort());
+
+        // set actions
+        List<OFAction> actions = new ArrayList<OFAction>();
+        actions.add(new OFActionOutput(OFPort.OFPP_TABLE.getValue(), (short) 0));
+        po.setActions(actions)
+            .setActionsLength((short) OFActionOutput.MINIMUM_LENGTH);
+
+        byte[] packetData = pi.getPacketData();
+        po.setLength(U16.t(OFPacketOut.MINIMUM_LENGTH
+                + po.getActionsLength() + packetData.length));
+        po.setPacketData(packetData);
+
+        try {
+            sw.getOutputStream().write(po);
+        } catch (IOException e) {
+            logger.error("Failure writing packet out", e);
+        }
+    }
 
 	@Override
 	public String getName() {
@@ -493,9 +545,9 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	@Override
 	public void deviceAdded(Device device, Overlay overlay) {
 		//remove device from default zone
-		if(!overlay.equals(defaultTenant)){
-			overlayManager.removeDeviceFromOverlay(defaultTenant, device);
-		}
+		//if(!overlay.equals(defaultTenant)){
+			//overlayManager.removeDeviceFromOverlay(defaultTenant, device);
+		//}
 		logger.info("Device: {} added to Overlay: {}",
 				HexString.toHexString(device.getDataLayerAddress()), overlay.getName());		
 	}

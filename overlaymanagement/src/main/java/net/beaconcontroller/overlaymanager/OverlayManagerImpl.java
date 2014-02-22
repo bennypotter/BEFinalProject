@@ -254,8 +254,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	public Tenant getTenantByDevice(Device device) {
 		lock.readLock().lock();
 		try {
-			Tenant t = tenantMap.get(device); 
-			return t;
+			return tenantMap.get(device);			
 		} finally {
 			lock.readLock().unlock();
 		}
@@ -268,10 +267,18 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 			//Device is added to the overlay and relvant map
 			//is updated
 			overlay.addDevice(device);
+			if(tenantMap.get(device) != null){
+				removeDeviceFromOverlay(tenantMap.get(device), device);
+			}
 			if(overlay instanceof Segment){
+				if(segMap.get(device)!=null){
+					removeDeviceFromOverlay(segMap.get(device), device);
+				}
 				segMap.put(device, (Segment)overlay);
 			}else if(overlay instanceof Tenant){
+				
 				tenantMap.put(device, (Tenant)overlay);
+				logger.info("{}",tenantMap.size());
 				
 			}
 			updateDevStatus(device,overlay,true);
