@@ -39,6 +39,7 @@ import net.beaconcontroller.overlaymanager.IOverlayManagerAware;
 import net.beaconcontroller.overlaymanager.Overlay;
 import net.beaconcontroller.overlaymanager.Segment;
 import net.beaconcontroller.overlaymanager.Tenant;
+import net.beaconcontroller.packet.Ethernet;
 import net.beaconcontroller.routing.IRoutingEngine;
 import net.beaconcontroller.routing.Link;
 import net.beaconcontroller.routing.Route;
@@ -131,12 +132,12 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	
 	
 	public void constructPacket(OFMessageFactory factory, OFMatch match, Route route, 
-			Device srcDevice, Device dstDevice, OFPacketIn pi/*int bufferId*/) {
+			Device srcDevice, Device dstDevice, OFPacketIn pi) {
 		OFFlowMod fm = (OFFlowMod) factory.getMessage(OFType.FLOW_MOD);
 	    OFActionOutput action = new OFActionOutput();
 	    List<OFAction> actions = new ArrayList<OFAction>();
 	    actions.add(action);
-	    fm.setIdleTimeout((short)255)
+	    fm.setIdleTimeout((short)5)
         	.setBufferId(0xffffffff)
         	.setMatch(match.clone())
         	.setActions(actions)
@@ -167,7 +168,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			//send the flow
 			try{
 				out.write(fm);
-				logger.info("flow sent to switch {}",sw.getId());
+				//logger.info("flow sent to switch {}",sw.getId());
 			}catch (IOException e){
 				logger.info("Error sending flow", e);
 			}
@@ -234,14 +235,13 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}catch (IOException e){
 			logger.info("Error sending flow", e);
 		}
-		logger.info(linkage);
+		//logger.info(linkage);
 	}	
 	
 	/******************** IOFMessageListener ******************************/ 
 	@Override
 	public Command receive(IOFSwitch sw, OFMessage msg) throws IOException {
-		
-		logger.info("Switch {} wants help", sw.getId());
+		//logger.info("Switch {} wants help", sw.getId());
 		//1. Find out who the packet was from and to
 		OFPacketIn pi = (OFPacketIn)msg;
 		OFMatch match = OFMatch.load(pi.getPacketData(), pi.getInPort());
@@ -274,10 +274,11 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		
 		//logger.info("{} to {}",HexString.toHexString(srcDevice.getDataLayerAddress()),
 				//HexString.toHexString(dstDevice.getDataLayerAddress()));
-		
+		Long dstDlAdd = Ethernet.toLong(dstDevice.getDataLayerAddress());
+		Long srcDlAdd = Ethernet.toLong(srcDevice.getDataLayerAddress());
 		//2. Find out what overlay these device belong to
-		Overlay dstOverlay = overlayManager.getTenantByDevice(dstDevice);
-		Overlay srcOverlay = overlayManager.getTenantByDevice(srcDevice);
+		Overlay dstOverlay = overlayManager.getTenantByDevice(dstDlAdd);
+		Overlay srcOverlay = overlayManager.getTenantByDevice(srcDlAdd);
 		
 		if(dstOverlay == null){
 			//logger.info("Destination Tenant is null");
@@ -287,8 +288,8 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		
 		if((dstOverlay == null) && (srcOverlay == null)){
 			//Devices must reside in a segment
-			srcOverlay = overlayManager.getSegmentByDevice(srcDevice);
-			dstOverlay = overlayManager.getSegmentByDevice(dstDevice);
+			srcOverlay = overlayManager.getSegmentByDevice(srcDlAdd);
+			dstOverlay = overlayManager.getSegmentByDevice(dstDlAdd);
 		}else if((dstOverlay == null) || (srcOverlay == null)){
 			//This means one if the devices is not in a Tenant but possibly 
 			//a segment and communication is not allowed
@@ -343,17 +344,20 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 				logger.info("Route not found");
 				return Command.CONTINUE;
 			}else{
-				//logger.info("Route has been found inputPort: {}",match.getInputPort());
-				//When we build the route we need to make sure every switch has instruction to forward
-				//the packet to the next switch so we do not have to repeat this process at the next switch.
-				//This mean we must take each "Link" in a Route, find the dst Switch, and tell it which port
-				//to send the packet out of...
-				//logger.info("packet from switch {}",sw.getId());
+				/*When we build the route we need to make sure every switch has instruction to forward
+				* the packet to the next switch so we do not have to repeat this process at the next switch.
+				* This mean we must take each "Link" in a Route, find the dst Switch, and tell it which port
+				* to send the packet out of...
+				* This causes problems if the switches do not receive their flow mod before they receive the packet
+				* which seems to happen. This is a possible performance issue with the switch as lots of packets 
+				* must be queued. In order to solve this problem we can call helpAlong() to tell any switch
+				* along the route where to send the packet.
+				*/
 				
 				//check querying switch is not in route
 				for(Link l : r.getPath()){
 					if(sw.getId() == l.getDst()){
-						short out = helpAlong(sw, r.getPath());
+						short out = helpAlong(sw, r.getPath(),dstDevice);
 						OFFlowMod fm = (OFFlowMod) sw.getInputStream().getMessageFactory().getMessage(OFType.FLOW_MOD);
 					    OFActionOutput action = new OFActionOutput();
 					    List<OFAction> actions = new ArrayList<OFAction>();
@@ -369,45 +373,44 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 					}
 				}
 				OFMessageInStream in = sw.getInputStream();
-				constructPacket(in.getMessageFactory(), match, r, srcDevice, dstDevice, /*pi.getBufferId()*/ pi);	
+				constructPacket(in.getMessageFactory(), match, r, srcDevice, dstDevice, pi);	
 				// send the packet if it is not buffered
                 if (pi.getBufferId() == 0xffffffff) {
                     pushPacket(in.getMessageFactory(), sw, match, pi);
-                }
-				//Create packet out (stops "specified buffer does not exist" error)
-				//Think this is because the switch does not buffer for long and this 
-				//algorithm take longer than time it is buffered for???
-				/*OFActionOutput outAction;
-				if(r.getPath().size() > 0){
-					outAction = new OFActionOutput(r.getPath().get(0).getOutPort());
-				}else{
-					outAction = new OFActionOutput(dstDevice.getSwPort());
-				}
-
-		        OFPacketOut po = new OFPacketOut()
-		            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
-		            .setInPort(pi.getInPort())
-		            .setActions(Collections.singletonList((OFAction)outAction))
-		        	.setPacketData(pi.getPacketData());
-		        //send the flow
-				try{
-					sw.getOutputStream().write(po);
-				}catch (IOException e){
-					logger.info("Error sending flow", e);
-				}*/
+                }				
 			}
 		}
 		return Command.CONTINUE;
 		
     }	
-	public short helpAlong(IOFSwitch sw, List<Link> path){
+	
+	/**
+	 * Sometimes the switch does not receive FlowMods in time. A switch along the route might ask where to forward
+	 * a packet to. This function is needed in order to avoid a "unknown bufferId" error.
+	 * Not the greatest as this puts the Controller into a reactive state rather than proactive.
+	 * @param sw
+	 * @param path
+	 * @param pi
+	 * @param dst
+	 * @return
+	 */
+	public short helpAlong(IOFSwitch sw, List<Link> path, Device dst){
+		//logger.info("HELP ALONG CALLED");
 		for(int i = 0; i < path.size(); i++){
 			if(sw.getId() == path.get(i).getDst()){
-				return path.get(i+1).getOutPort();
+				try{
+					return path.get(i+1).getOutPort();//likely throwing our index error
+				}catch(Exception e){
+					//logger.info("There was a problem with this flow. Switch: {} Path size: {} Count:{} InPort: {} "
+						//	+ "OutPort: {}",sw.getId(),path.size(),i,path.get(i).getInPort(),path.get(i).getOutPort());
+					//must give destination device port
+					return dst.getSwPort();
+				}
 			}
 		}
 		return -1;
 	}
+	
 	public void pushPacket(OFMessageFactory factory, IOFSwitch sw, OFMatch match, OFPacketIn pi) {
         OFPacketOut po = (OFPacketOut) factory.getMessage(OFType.PACKET_OUT);
         po.setBufferId(pi.getBufferId());
@@ -441,31 +444,34 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	@Override
 	public void deviceAdded(Device device) {		
 		//Devices that have been added to the network must be placed
-		//into the	 default zone
-		
+		//into the default zone, but only if not already in a Segment
+		Long dlAddress = Ethernet.toLong(device.getDataLayerAddress()); 
 		lock.writeLock().lock();
-		try{
-		overlayManager.addDeviceToOverlay(defaultTenant, device);
-		}finally{
-			lock.writeLock().lock();
+		Tenant t = overlayManager.getTenantByDevice(dlAddress);
+		Segment s = overlayManager.getSegmentByDevice(dlAddress);
+		if((overlayManager.getSegmentByDevice(dlAddress) == null) && (overlayManager.getTenantByDevice(dlAddress) == null)){
+			try{
+				overlayManager.addDeviceToOverlay(defaultTenant, device);
+			}finally{
+				lock.writeLock().lock();
+			}
 		}
-		//Testing only
-		/*devices.add(device);
-		count++;
-		if(count == 4){
-			buildEnvironment();
-		}*/
-		/////////////////////
 	}
 
 	@Override
 	public void deviceRemoved(Device device) {
-		//Delete the flows currently associated with device		
+		//Delete the flows currently associated with device
+		logger.info("Device Removed: {}", HexString.toHexString(device.getDataLayerAddress()));
+		List<Device>devices = new ArrayList<Device>();
+		devices.add(device);
+		deleteRoutes(devices);
 	}
 
 	@Override
 	public void deviceMoved(Device device, IOFSwitch oldSw, Short oldPort,
 			IOFSwitch sw, Short port) {
+		logger.info("Device Moved: {}", HexString.toHexString(device.getDataLayerAddress()));
+		//create a list as deleteRoutes expects a list
 		List<Device>devices = new ArrayList<Device>();
 		devices.add(device);
 		deleteRoutes(devices);		

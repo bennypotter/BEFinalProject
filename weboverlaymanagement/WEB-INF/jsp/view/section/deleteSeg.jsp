@@ -7,19 +7,19 @@
 <div class="section">
   <div class="section-header">${title}</div>
   <div class="section-content">
-    <form method="post" action="/wm/overlaymanager/segment/add" class="beaconAjaxDialogForm">
+    <form method="post" action="/wm/overlaymanager/segment/delete" class="beaconAjaxDialogForm">
       <table>
         <tr>
           <td>Segment Name: </td>
-          <td><input type="input" name="segName"/></td>
+          <td><input type="input" name="segId"/></td>
         </tr>
         <tr>
         <td>Tenant Owner:</td>
-        <td><input type="input" name="tenOwner"/></td>
+        <td><input type="input" name="tenId"/></td>
         </tr>
         <tr>
           <td colspan="2">
-            <input type="submit" value="Create"/>
+            <input type="submit" value="Delete"/>
           </td>
         </tr>
       </table>

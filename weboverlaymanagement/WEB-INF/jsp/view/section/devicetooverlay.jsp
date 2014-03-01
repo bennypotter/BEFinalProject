@@ -19,11 +19,11 @@
           <%  Device sw = (Device)pageContext.findAttribute("sw"); 
               pageContext.setAttribute("hexId", HexString.toHexString(sw.getDataLayerAddress()));
               IOverlayManager om = (IOverlayManager)pageContext.findAttribute("overlayManager");
-              Tenant t = om.getTenantByDevice(sw);
+              Tenant t = om.getTenantByDevice(Ethernet.toLong(sw.getDataLayerAddress()));
               if(t != null) {
               	pageContext.setAttribute("devOwner", t.getName());
               } else {
-              	Segment s = om.getSegmentByDevice(sw);
+              	Segment s = om.getSegmentByDevice(Ethernet.toLong(sw.getDataLayerAddress()));
               	pageContext.setAttribute("devOwner", s.getName());
               }
           %>

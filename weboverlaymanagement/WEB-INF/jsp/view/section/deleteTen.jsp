@@ -7,15 +7,15 @@
 <div class="section">
   <div class="section-header">${title}</div>
   <div class="section-content">
-    <form method="post" action="/wm/overlaymanager/tenant/add" class="beaconAjaxDialogForm">
+    <form method="post" action="/wm/overlaymanager/tenant/delete" class="beaconAjaxDialogForm">
       <table>
         <tr>
           <td>Tenant Name: </td>
-          <td><input type="input" name="file"/></td>
+          <td><input type="input" name="tenId"/></td>
         </tr>
         <tr>
           <td colspan="2">
-            <input type="submit" value="Create"/>
+            <input type="submit" value="Delete"/>
           </td>
         </tr>
       </table>

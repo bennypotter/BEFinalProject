@@ -36,6 +36,7 @@ import net.beaconcontroller.devicemanager.IDeviceManager;
 import net.beaconcontroller.overlaymanager.IOverlayManager;
 import net.beaconcontroller.overlaymanager.Segment;
 import net.beaconcontroller.overlaymanager.Tenant;
+import net.beaconcontroller.packet.Ethernet;
 
 @Controller
 @RequestMapping("/overlaymanager")
@@ -104,10 +105,10 @@ public class OverlayManagementWebManageable implements IWebManageable {
         //Device Add to Ten Form
         model.put("title", "Delete Device from Segment");
         layout.addSection(new JspSection("deleteDeviceFromSeg.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
-        
+       
       //Device Allow List Form
         model.put("title", "Delete from Allow List");
-        layout.addSection(new JspSection("allowlist.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
+        layout.addSection(new JspSection("removFromAllowList.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
         
         return BeaconViewResolver.SIMPLE_VIEW;
     }
@@ -119,6 +120,17 @@ public class OverlayManagementWebManageable implements IWebManageable {
         BeaconJsonView view = new BeaconJsonView();
         tenants.add(overlayManager.createTenant(file));
         
+        view.setContentType("text/javascript");
+        return view;
+    }
+    
+    @RequestMapping(value = "/tenant/delete", method = RequestMethod.POST)
+    public View deleteTenant(@RequestParam("tenId") String tenId, Map<String, Object> model) throws Exception {
+        BeaconJsonView view = new BeaconJsonView();
+        
+        Tenant t = overlayManager.getTenantById(Long.parseLong(tenId));
+        overlayManager.deleteOverlay(t);
+        tenants.remove(t);        
         view.setContentType("text/javascript");
         return view;
     }
@@ -135,6 +147,16 @@ public class OverlayManagementWebManageable implements IWebManageable {
         	}
         }
         //logger.info here
+        view.setContentType("text/javascript");
+        return view;
+    }
+    
+    @RequestMapping(value = "/segment/delete", method = RequestMethod.POST)
+    public View deleteSegment(@RequestParam("segId") String segId,@RequestParam("tenId") String tenId,
+    		Map<String, Object> model) throws Exception {
+        BeaconJsonView view = new BeaconJsonView();
+        Segment s = overlayManager.getSegmentById(Long.parseLong(tenId),Long.parseLong(segId));
+        overlayManager.deleteOverlay(s);        
         view.setContentType("text/javascript");
         return view;
     }
@@ -158,8 +180,8 @@ public class OverlayManagementWebManageable implements IWebManageable {
     		Map<String, Object> model) throws Exception {
         BeaconJsonView view = new BeaconJsonView();
         Device d = deviceManager.getDeviceByDataLayerAddress(HexString.fromHexString(dlAddr));
-        
-        Tenant t = overlayManager.getTenantByDevice(d);
+        Long dlAddress = Ethernet.toLong(d.getDataLayerAddress());
+        Tenant t = overlayManager.getTenantByDevice(dlAddress);
         overlayManager.removeDeviceFromOverlay(t, d);      
         view.setContentType("text/javascript");
         return view;
@@ -182,7 +204,8 @@ public class OverlayManagementWebManageable implements IWebManageable {
     public View deviceDeleteSegment(@RequestParam("mac") String dlAddr, Map<String, Object> model) throws Exception {
         BeaconJsonView view = new BeaconJsonView();
         Device d = deviceManager.getDeviceByDataLayerAddress(HexString.fromHexString(dlAddr));
-        Segment s = overlayManager.getSegmentByDevice(d);
+        Long dlAddress = Ethernet.toLong(d.getDataLayerAddress());
+        Segment s = overlayManager.getSegmentByDevice(dlAddress);
         overlayManager.removeDeviceFromOverlay(s, d);
         view.setContentType("text/javascript");
         return view;
@@ -206,6 +229,30 @@ public class OverlayManagementWebManageable implements IWebManageable {
     		Segment srcSegment = srcTenant.getSegments().get(Long.parseLong(srcSeg));
     		Segment dstSegment = dstTenant.getSegments().get(Long.parseLong(dstSeg));
     		overlayManager.addToList(srcSegment, dstSegment);
+    		break;
+    	}
+    	
+    	return view;
+    }
+    
+    @RequestMapping(value = "/removefromallowlist", method = RequestMethod.POST)
+    public View removeFromAllowList(@RequestParam("srcTen") String srcTen, @RequestParam("dstTen") String dstTen,
+    		@RequestParam("overlayCheck") String selection, @RequestParam("srcSeg") String srcSeg, 
+    		@RequestParam("dstSeg") String dstSeg,	Map<String, Object>model) throws Exception {
+    	BeaconJsonView view = new BeaconJsonView();
+    	Long srcId = Long.parseLong(srcTen);
+    	Long dstId = Long.parseLong(dstTen);
+    	Tenant srcTenant = overlayManager.getTenantById(srcId);
+    	Tenant dstTenant = overlayManager.getTenantById(dstId);
+    	switch(selection){
+    	case "Tenant":    		
+        	overlayManager.removeFromList(srcTenant, dstTenant);
+    		break;
+    		
+    	case "Segment":
+    		Segment srcSegment = srcTenant.getSegments().get(Long.parseLong(srcSeg));
+    		Segment dstSegment = dstTenant.getSegments().get(Long.parseLong(dstSeg));
+    		overlayManager.removeFromList(srcSegment, dstSegment);
     		break;
     	}
     	
@@ -274,7 +321,8 @@ public class OverlayManagementWebManageable implements IWebManageable {
         for(Device d : deviceManager.getDevices()) {
            	List<String> row = new ArrayList<String>();
            	row.add(HexString.toHexString(d.getDataLayerAddress()));
-           	row.add(overlayManager.getTenantByDevice(d).getName());
+           	Long dlAddress = Ethernet.toLong(d.getDataLayerAddress());
+           	row.add(overlayManager.getTenantByDevice(dlAddress).getName());
            	//row.add(overlayManager.getSegmentByDevice(d).getName());
            	cells.add(row);        
         }

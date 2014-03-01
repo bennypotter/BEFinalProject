@@ -21,6 +21,7 @@ import net.beaconcontroller.core.IOFMessageListener;
 import net.beaconcontroller.core.IOFSwitch;
 import net.beaconcontroller.devicemanager.Device;
 import net.beaconcontroller.overlaymanagementsystem.OverlayManagementSystem;
+import net.beaconcontroller.packet.Ethernet;
 
 public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	protected enum UpdateType {
@@ -42,8 +43,8 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	protected IBeaconProvider beaconProvider;
 	protected static Logger logger = LoggerFactory.getLogger(OverlayManagerImpl.class);
 	protected Set<IOverlayManagerAware> overlayManagerAware;
-	protected Map<Device, Tenant> tenantMap;
-	protected Map<Device, Segment> segMap;
+	protected Map<Long, Tenant> tenantMap;
+	protected Map<Long, Segment> segMap;
 	protected Map<Long, Overlay> idToOverlayMap;
 	protected BlockingQueue<Update> updates;
 	protected Thread updatesThread;
@@ -54,8 +55,8 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	public void startUp() {
 		idGen = new Random();
         beaconProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        tenantMap = new HashMap<Device, Tenant>();
-		segMap = new HashMap<Device,Segment>();
+        tenantMap = new HashMap<Long, Tenant>();
+		segMap = new HashMap<Long,Segment>();
 		idToOverlayMap = new HashMap<Long, Overlay>();
 		lock = new ReentrantReadWriteLock();
 		this.updates = new LinkedBlockingQueue<Update>();
@@ -221,7 +222,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	}
 
 	@Override
-	public Map<Device,Tenant> getTenants() {
+	public Map<Long,Tenant> getTenants() {
 		lock.readLock().lock();
 		try {
 			return tenantMap;
@@ -231,7 +232,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	}
 	
 	@Override
-	public Map<Device, Segment> getSegments() {
+	public Map<Long, Segment> getSegments() {
 		lock.readLock().lock();
 		try {
 			return segMap;
@@ -241,7 +242,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	}
 
 	@Override
-	public Segment getSegmentByDevice(Device device) {
+	public Segment getSegmentByDevice(Long device) {
 		lock.readLock().lock();
 		try {			
 			return segMap.get(device);
@@ -251,7 +252,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 	}
 
 	@Override
-	public Tenant getTenantByDevice(Device device) {
+	public Tenant getTenantByDevice(Long device) {
 		lock.readLock().lock();
 		try {
 			return tenantMap.get(device);			
@@ -266,7 +267,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 		try{
 			//Device is added to the overlay and relvant map
 			//is updated
-			overlay.addDevice(device);
+			overlay.addDevice(device);//id device is removed and readded this could cause problems with comparison in canCaommunicate()
 			if(tenantMap.get(device) != null){
 				removeDeviceFromOverlay(tenantMap.get(device), device);
 			}
@@ -274,10 +275,10 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 				if(segMap.get(device)!=null){
 					removeDeviceFromOverlay(segMap.get(device), device);
 				}
-				segMap.put(device, (Segment)overlay);
+				segMap.put(Ethernet.toLong(device.getDataLayerAddress()), (Segment)overlay);
 			}else if(overlay instanceof Tenant){
 				
-				tenantMap.put(device, (Tenant)overlay);
+				tenantMap.put(Ethernet.toLong(device.getDataLayerAddress()), (Tenant)overlay);
 				logger.info("{}",tenantMap.size());
 				
 			}

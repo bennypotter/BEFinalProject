@@ -13,13 +13,13 @@ public interface IOverlayManager {
 	
 	public Segment getSegmentById(long tenantId, long segmentId);
 	
-	public Map<Device, Tenant> getTenants();
+	public Map<Long, Tenant> getTenants();
 	
-	public Map<Device, Segment> getSegments();
+	public Map<Long, Segment> getSegments();
 	
-	public Segment getSegmentByDevice(Device device);
+	public Segment getSegmentByDevice(Long device);
 	
-	public Tenant getTenantByDevice(Device device);
+	public Tenant getTenantByDevice(Long device);
 	
 	public void addDeviceToOverlay(Overlay overlay, Device device);
 	
