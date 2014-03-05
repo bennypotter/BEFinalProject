@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -264,10 +265,10 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//learn the address as quickly as it normally would..."pingall"
 		//sorts this
 		if(dstDevice == null){
-			//logger.info("Destination device is not know");
+			logger.info("Destination device is not know");
 			return Command.CONTINUE;
 		}else if(srcDevice == null){
-			//logger.info("Source device is not know");
+			logger.info("Source device is not know");
 			
 			return Command.CONTINUE;
 		}
@@ -281,9 +282,9 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		Overlay srcOverlay = overlayManager.getTenantByDevice(srcDlAdd);
 		
 		if(dstOverlay == null){
-			//logger.info("Destination Tenant is null");
+			logger.info("Destination Tenant is null");
 		}else if (srcOverlay == null){
-			//logger.info("Source Tenant is null");
+			logger.info("Source Tenant is null");
 		}
 		
 		if((dstOverlay == null) && (srcOverlay == null)){
@@ -293,7 +294,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}else if((dstOverlay == null) || (srcOverlay == null)){
 			//This means one if the devices is not in a Tenant but possibly 
 			//a segment and communication is not allowed
-			//logger.info("One of the devices does not belong to a Tenant, dropping packet");
+			logger.info("One of the devices does not belong to a Tenant, dropping packet");
 			return Command.CONTINUE;
 		}
 		 
@@ -302,37 +303,37 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//Are both devices in the same Tenant
 		boolean canTalk = false;
 		if(dstOverlay.equals(srcOverlay)){
-			//logger.info("Overlays are the same.....");
+			logger.info("Overlays are the same.....");
 			canTalk = true;			
 		}else{
 			if((srcOverlay instanceof Tenant) && (dstOverlay instanceof Tenant)){
-				//logger.info("Tenants are Not the same, checking allow list...");
+				logger.info("Tenants are Not the same, checking allow list...");
 				//	Check if they have allowed communication
 				boolean srcTntCanTalk = srcOverlay.canCommunicate(dstOverlay);
 				boolean dstTntCanTalk = dstOverlay.canCommunicate(srcOverlay);
 				if((srcTntCanTalk) && (dstTntCanTalk)){
-					//logger.info("Both Tenant have agreed communication...");
+					logger.info("Both Tenant have agreed communication...");
 					canTalk = true;
 				}					
 			}else{
 				//They are segments
-				//logger.info("Segments are Not the same, checking allow list...");
+				logger.info("Segments are Not the same, checking allow list...");
 				boolean srcSegCanTalk = srcOverlay.canCommunicate(dstOverlay);
 				boolean dstSegCanTalk = dstOverlay.canCommunicate(srcOverlay);
 				if((srcSegCanTalk) && (dstSegCanTalk)){
-					//logger.info("Segments have agreed communication, checking tenants...");
+					logger.info("Segments have agreed communication, checking tenants...");
 					Tenant srcTenant = ((Segment)srcOverlay).getTenant();
 					Tenant dstTenant =  ((Segment)dstOverlay).getTenant();
 					boolean srcTnCanTalk = srcTenant.canCommunicate(dstTenant);
 					boolean dstTnCanTalk = dstTenant.canCommunicate(srcTenant);
 					if((srcTnCanTalk) && (dstTnCanTalk)){
-						//logger.info("Tenants have agreed communication...");
+						logger.info("Tenants have agreed communication...");
 						canTalk = true;
 					}else{
-						//logger.info("Tenants have not agreed communication");
+						logger.info("Tenants have not agreed communication");
 					}
 				}else{
-					//logger.info("Segments have not agreed communication");
+					logger.info("Segments have not agreed communication");
 				}
 			}			
 		}
@@ -504,15 +505,14 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//Then take all devices in associated Segments and Tenant
 		//and place in the Default Tenant zone
 		List<Device> devices = new ArrayList<Device>();
-		//Get all devices residing in the Tenant and remove them
-		for(Device device : tenant.getDevices()){
-			devices.add(device);
-			tenant.removeDevice(device);
-		}
 		
-		//Get all devices residing in segments and remove them
-		for(Map.Entry entry: tenant.getSegments().entrySet()){
-			segmentRemoved((Segment)entry.getValue());
+		//Get all devices residing in the Tenant and remove them
+		int arraySize = tenant.getDevices().size();
+		for(int i = 0; i < arraySize; i++){
+			Device device = tenant.getDevices().get(0);
+			//tenant.removeDevice(device);
+			overlayManager.removeDeviceFromOverlay(tenant, device);
+			//overlayManager.addDeviceToOverlay(defaultTenant, device);						
 		}
 		//delete routes on the switches
 		deleteRoutes(devices);
@@ -531,12 +531,15 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//associated with any device in that segment.
 		//Then need to move device from segment to tenant owner
 		List<Device> devices = new ArrayList<Device>();
-		for(Device device : segment.getDevices()){
-			devices.add(device);
-			segment.removeDevice(device);
+		//Segment segForDel = segment;
+		int arraySize = segment.getDevices().size();
+		for(int i = 0; i < arraySize; i++){
+			Device device = segment.getDevices().get(0);
+			//segment.removeDevice(device);
+			//deviceRemoved(device, segment);
+			overlayManager.removeDeviceFromOverlay(segment, device);
+			overlayManager.addDeviceToOverlay(segment.getTenant(), device);
 		}
-		//delete routes
-		deleteRoutes(devices);
 		logger.info("Segment: {} has been removed from Tenant: {}",
 				segment.getName(), segment.getTenant().getName());
 	}
@@ -544,16 +547,32 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	@Override
 	public void allowListUpdate(Overlay srcOverlay, Overlay dstOverlay,
 			boolean added) {
-		logger.info("ListUpdate: {} has given access to: {}", 
-				srcOverlay.getName(), dstOverlay.getName());		
+		if(added){
+			logger.info("ListUpdate: {} has given access to: {}", 
+				srcOverlay.getName(), dstOverlay.getName());
+		}
+		else{
+			//Delete some flows
+			logger.info("ListUpdate: {} has denied access to: {}", 
+					srcOverlay.getName(), dstOverlay.getName());
+		}
 	}
 
 	@Override
 	public void deviceAdded(Device device, Overlay overlay) {
-		//remove device from default zone
-		//if(!overlay.equals(defaultTenant)){
-			//overlayManager.removeDeviceFromOverlay(defaultTenant, device);
-		//}
+		List<Device> devices = new ArrayList<Device>();
+		devices.add(device);
+		deleteRoutes(devices);
+		
+		if(!overlay.equals(defaultTenant)){
+			//if default tenant conatains the device added to overlay then remove
+			//device from default tenant
+			ArrayList<Device> deviceList = defaultTenant.getDevices();
+			if(deviceList.contains(device)){
+				overlayManager.removeDeviceFromOverlay(defaultTenant, device);
+			}
+		}
+		
 		logger.info("Device: {} added to Overlay: {}",
 				HexString.toHexString(device.getDataLayerAddress()), overlay.getName());		
 	}
@@ -573,7 +592,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			}
 		}else{
 			//Device removed from segment must be placed into their Tenant owner
-			overlayManager.addDeviceToOverlay(((Segment)overlay).getTenant(), device);			
+			//overlayManager.addDeviceToOverlay(((Segment)overlay).getTenant(), device);			
 		}			
 		logger.info("Device: {} has been removed from: {}", 
 					HexString.toHexString(device.getDataLayerAddress()), overlay.getName());		

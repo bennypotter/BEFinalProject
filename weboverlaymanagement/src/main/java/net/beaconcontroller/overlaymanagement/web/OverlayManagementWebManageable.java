@@ -108,7 +108,7 @@ public class OverlayManagementWebManageable implements IWebManageable {
        
       //Device Allow List Form
         model.put("title", "Delete from Allow List");
-        layout.addSection(new JspSection("removFromAllowList.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
+        layout.addSection(new JspSection("removeFromAllowList.jsp", new HashMap<String, Object>(model)), TwoColumnLayout.COLUMN1);
         
         return BeaconViewResolver.SIMPLE_VIEW;
     }
@@ -235,7 +235,7 @@ public class OverlayManagementWebManageable implements IWebManageable {
     	return view;
     }
     
-    @RequestMapping(value = "/removefromallowlist", method = RequestMethod.POST)
+    @RequestMapping(value = "/removeallowlist", method = RequestMethod.POST)
     public View removeFromAllowList(@RequestParam("srcTen") String srcTen, @RequestParam("dstTen") String dstTen,
     		@RequestParam("overlayCheck") String selection, @RequestParam("srcSeg") String srcSeg, 
     		@RequestParam("dstSeg") String dstSeg,	Map<String, Object>model) throws Exception {

@@ -7,7 +7,7 @@
 <div class="section">
   <div class="section-header">${title}</div>
   <div class="section-content">
-    <form method="post" action="/wm/overlaymanager/removefromallowlist" class="beaconAjaxDialogForm">
+    <form method="post" action="/wm/overlaymanager/removeallowlist" class="beaconAjaxDialogForm">
       <table>
         <tr>
           <td>Source Tenant ID: </td>
