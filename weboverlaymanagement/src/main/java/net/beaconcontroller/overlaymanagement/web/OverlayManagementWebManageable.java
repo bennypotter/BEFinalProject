@@ -322,8 +322,14 @@ public class OverlayManagementWebManageable implements IWebManageable {
            	List<String> row = new ArrayList<String>();
            	row.add(HexString.toHexString(d.getDataLayerAddress()));
            	Long dlAddress = Ethernet.toLong(d.getDataLayerAddress());
-           	row.add(overlayManager.getTenantByDevice(dlAddress).getName());
-           	//row.add(overlayManager.getSegmentByDevice(d).getName());
+           	Tenant t = overlayManager.getTenantByDevice(dlAddress);
+           	if(t != null){
+           		row.add(t.getName());
+           	}else{
+           		Segment s = overlayManager.getSegmentByDevice(dlAddress);
+           		row.add(s.getTenant().getName());
+           		row.add(s.getName());
+           	}
            	cells.add(row);        
         }
         

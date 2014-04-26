@@ -61,8 +61,6 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 		idToOverlayMap = new HashMap<Long, Overlay>();
 		lock = new ReentrantReadWriteLock();
 		this.updates = new LinkedBlockingQueue<Update>();
-		//Tenant t = new Tenant("Test Tenant");
-		//updateTensStatus(t, true);
 		
 		updatesThread = new Thread(new Runnable () {
             @Override
@@ -271,19 +269,13 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 			overlay.addDevice(device);//id device is removed and readded this could cause problems with comparison in canCaommunicate()
 			Tenant t;
 			if((t = tenantMap.get(Ethernet.toLong(device.getDataLayerAddress()))) != null){
-				//String name = t.getName();
 				removeDeviceFromOverlay(t, device);
 			}
 			if(overlay instanceof Segment){
-				//if(segMap.get(Ethernet.toLong(device.getDataLayerAddress()))!=null){
-					//removeDeviceFromOverlay(segMap.get(Ethernet.toLong(device.getDataLayerAddress())), device);
-				//}
 				segMap.put(Ethernet.toLong(device.getDataLayerAddress()), (Segment)overlay);
-			}else if(overlay instanceof Tenant){
-				
+			}else if(overlay instanceof Tenant){				
 				tenantMap.put(Ethernet.toLong(device.getDataLayerAddress()), (Tenant)overlay);
-				logger.info("{}",tenantMap.size());
-				
+				logger.info("{}",tenantMap.size());				
 			}
 			updateDevStatus(device,overlay,true);
 		} finally {
@@ -299,15 +291,12 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 			if(overlay instanceof Segment){			
 				Segment s = segMap.remove(Ethernet.toLong(device.getDataLayerAddress()));
 				s.removeDevice(device);
-				//we must move device to new home in its tenant
-				//addDeviceToOverlay(((Segment)overlay).getTenant(), device);
 			}else if(overlay instanceof Tenant){
 				Tenant t = tenantMap.remove(Ethernet.toLong(device.getDataLayerAddress()));
 				t.removeDevice(device);
 			}
 			updateDevStatus(device,overlay,false);
 		} finally {
-			//overlay.removeDevice(device);
 			lock.writeLock().unlock();
 		}
 	}
@@ -350,15 +339,6 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 		lock.writeLock().lock();
 		try{
 			if(overlay instanceof Tenant){
-				/*for(Iterator<Map.Entry<Long, Segment>> it = ((Tenant)overlay).getSegments().entrySet().iterator(); it.hasNext();){
-					Map.Entry<Long, Segment> tenantsSegEntry = it.next();
-					for(Iterator<Map.Entry<Long, Segment>> itt = segMap.entrySet().iterator(); itt.hasNext();){
-						Map.Entry<Long, Segment> segMapEntry = itt.next();
-						if(tenantsSegEntry.getValue().getId() == segMapEntry.getValue().getId()){
-							itt.remove();
-							updateSegsStatus(tenantsSegEntry.getValue(), false);
-						}
-					}*/
 				for(Iterator<Map.Entry<Long, Segment>> it = ((Tenant)overlay).getSegments().entrySet().iterator(); it.hasNext();){
 					Map.Entry<Long, Segment> tenantsSegEntry = it.next();
 					updateSegsStatus(tenantsSegEntry.getValue(), false);
@@ -369,13 +349,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 				Tenant t = ((Segment)overlay).getTenant();				
 				t.getSegments().remove(overlay.getId());
 				updateSegsStatus((Segment)overlay, false);
-				/*for(Iterator<Map.Entry<Long, Segment>> it = segMap.entrySet().iterator(); it.hasNext();){
-					Map.Entry<Long, Segment> entry = it.next();
-					if(overlay.equals(entry.getValue())){
-						it.remove();
-					}*/
-			}			
-			//overlay=null;
+			}
 		}finally {
 			lock.writeLock().unlock();
 		}
@@ -399,8 +373,6 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 		} finally {
 			lock.writeLock().unlock();
 		}
-	}
-	
+	}	
 	/*****************************************************************/
-
 }

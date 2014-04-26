@@ -56,16 +56,9 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	protected Tenant defaultTenant;
 	protected ReentrantReadWriteLock lock;
 	
-	
-	/////////Testing only////////////
-	List<Device> devices;
-	int count = 0;	
-	////////////////////////////////
-	
 	public void startUp() {
 		defaultTenant = overlayManager.createTenant("Default Tenant");
 		beaconProvider.addOFMessageListener(OFType.PACKET_IN, this);
-		devices = new ArrayList<Device>();
 		lock = new ReentrantReadWriteLock();
     }
 	
@@ -211,23 +204,6 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			deviceMoved(dstDevice, null, null, null, null);
 			return;
 		}
-		
-		//Create packet out (stops "specified buffer does not exist" error)
-		//Think this is because the switch does not buffer for long and this 
-		//algorithm take longer than time it is buffered for???
-		/*OFActionOutput outAction;
-		if(route.getPath().size() > 0){
-			outAction = new OFActionOutput(outport);
-		}else{
-			outAction = new OFActionOutput(dstDevice.getSwPort());
-		}
-
-        OFPacketOut po = new OFPacketOut()
-            .setBufferId(OFPacketOut.BUFFER_ID_NONE)
-            .setInPort(fm.getMatch().getInputPort())
-            .setActions(Collections.singletonList((OFAction)outAction))
-        	.setPacketData(pi.getPacketData());
-		*/
 		//send the flow
 		try{
 			out.write(fm);
@@ -252,8 +228,6 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//IP the ARP packet is trying to resolve.
 		Integer nwSrc = match.getNetworkSource();
 		Integer nwDst = match.getNetworkDestination();
-		//byte[] dlSrc = match.getDataLayerSource();
-		//byte[] dlDst = match.getDataLayerDestination();
 		Device dstDevice = deviceManager.getDeviceByNetworkLayerAddress(nwDst);
 		Device srcDevice = deviceManager.getDeviceByNetworkLayerAddress(nwSrc);
 		
@@ -339,7 +313,6 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		}
 		
 		if(canTalk){
-			//logger.info("Devices are allowed to communicate");
 			Route r = routingEngine.getRoute(srcDevice.getSw().getId(), dstDevice.getSw().getId());
 			if(r == null){
 				logger.info("Route not found");
@@ -396,14 +369,11 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 	 * @return
 	 */
 	public short helpAlong(IOFSwitch sw, List<Link> path, Device dst){
-		//logger.info("HELP ALONG CALLED");
 		for(int i = 0; i < path.size(); i++){
 			if(sw.getId() == path.get(i).getDst()){
 				try{
 					return path.get(i+1).getOutPort();//likely throwing our index error
 				}catch(Exception e){
-					//logger.info("There was a problem with this flow. Switch: {} Path size: {} Count:{} InPort: {} "
-						//	+ "OutPort: {}",sw.getId(),path.size(),i,path.get(i).getInPort(),path.get(i).getOutPort());
 					//must give destination device port
 					return dst.getSwPort();
 				}
@@ -437,10 +407,9 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 
 	@Override
 	public String getName() {
-		// TODO Auto-generated method stub
 		return "overlayManagementSystem";
 	}
-	boolean first= true;
+	
 	/*********************** IDeviceManagerAware ******************************/ 
 	@Override
 	public void deviceAdded(Device device) {		
@@ -510,9 +479,7 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		int arraySize = tenant.getDevices().size();
 		for(int i = 0; i < arraySize; i++){
 			Device device = tenant.getDevices().get(0);
-			//tenant.removeDevice(device);
-			overlayManager.removeDeviceFromOverlay(tenant, device);
-			//overlayManager.addDeviceToOverlay(defaultTenant, device);						
+			overlayManager.removeDeviceFromOverlay(tenant, device);					
 		}
 		//delete routes on the switches
 		deleteRoutes(devices);
@@ -531,12 +498,9 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 		//associated with any device in that segment.
 		//Then need to move device from segment to tenant owner
 		List<Device> devices = new ArrayList<Device>();
-		//Segment segForDel = segment;
 		int arraySize = segment.getDevices().size();
 		for(int i = 0; i < arraySize; i++){
 			Device device = segment.getDevices().get(0);
-			//segment.removeDevice(device);
-			//deviceRemoved(device, segment);
 			overlayManager.removeDeviceFromOverlay(segment, device);
 			overlayManager.addDeviceToOverlay(segment.getTenant(), device);
 		}
@@ -571,10 +535,9 @@ public class OverlayManagementSystem implements IOFMessageListener, IDeviceManag
 			if(deviceList.contains(device)){
 				overlayManager.removeDeviceFromOverlay(defaultTenant, device);
 			}
-		}
-		
+		}		
 		logger.info("Device: {} added to Overlay: {}",
-				HexString.toHexString(device.getDataLayerAddress()), overlay.getName());		
+				HexString.toHexString(device.getDataLayerAddress()), overlay.getName());	
 	}
 
 	@Override
