@@ -213,8 +213,17 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 			return tenantMap;
 		} finally {
 			lock.readLock().unlock();
-		}
-		
+		}		
+	}
+	
+	@Override
+	public Map<Device, Segment> getSegments() {
+		lock.readLock().lock();
+		try {
+			return segMap;
+		} finally {
+			lock.readLock().unlock();
+		}	
 	}
 
 	@Override
@@ -249,6 +258,7 @@ public class OverlayManagerImpl implements IOFMessageListener, IOverlayManager{
 				segMap.put(device, (Segment)overlay);
 			}else if(overlay instanceof Tenant){
 				tenantMap.put(device, (Tenant)overlay);
+				
 			}
 			updateDevStatus(device,overlay,true);
 		} finally {

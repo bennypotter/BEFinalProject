@@ -36,8 +36,6 @@
   
   <osgi:set id="overlayManagerAwareSet" cardinality="0..N"
     interface="net.beaconcontroller.overlaymanager.IOverlayManagerAware">
-  </osgi:set>
-  
-  
+  </osgi:set>  
  
 </beans>
